@@ -1,8 +1,8 @@
-// test-shopify.js
+﻿// test-shopify.js
 require('dotenv').config();
-const db = require('better-sqlite3')('./boutique.db');
-const { pusherProduit } = require('./shopify');
-const { mettreAJourShopifyIds } = require('./database');
+const db = require('better-sqlite3')(require('path').join(__dirname, '../boutique.db'));
+const { pusherProduit } = require('../src/shopify/client');
+const { mettreAJourShopifyIds } = require('../src/db/index');
 
 async function main() {
   // On prend le premier produit en base

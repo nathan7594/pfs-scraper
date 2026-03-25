@@ -1,6 +1,6 @@
-const db = require('better-sqlite3')('./boutique.db');
-const { calculerPrixVente } = require('./database');
-const { decoderSKU } = require('./decoder-sku');
+﻿const db = require('better-sqlite3')(require('path').join(__dirname, '../../boutique.db'));
+const { calculerPrixVente } = require('../db/index');
+const { decoderSKU } = require('../utils/decoder-sku');
 
 // Étape 1 — On corrige les shopify_type manquants
 console.log('🔧 Correction des types manquants...');

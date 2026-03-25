@@ -1,0 +1,129 @@
+{
+  "source": "avm",
+  "sku": "ROP0176F",
+  "categorie_code": "Robes courtes",
+  "shopify_type": "Robe",
+  "prix_ht": 11.4,
+  "description": "GRANDE TAILLE",
+  "categorie": "Robes",
+  "matiere": "100% VOILE DE COTON",
+  "construction": "TISSÉ",
+  "couleur": "BLEU - MOUTARDE - CREME - MULTICOLORE",
+  "correspondance_tailles": "XL,1X,2X,3X (44/46,48/50,52/54,56/60)",
+  "saison": "ÉTÉ",
+  "annee": "2025",
+  "imprime": "M207A",
+  "longueur": "MI-LONGUE",
+  "coupe": "LARGE",
+  "manches": "MANCHES COURTES",
+  "col": "ROND",
+  "lavage": "MACHINE À LAVER 30°C",
+  "features": {
+    "Matière": "100% VOILE DE COTON",
+    "Construction": "TISSÉ",
+    "Couleur": "BLEU - MOUTARDE - CREME - MULTICOLORE",
+    "Lavage": "MACHINE À LAVER 30°C",
+    "Correspondance Tailles UE": "XL,1X,2X,3X (44/46,48/50,52/54,56/60)",
+    "Longueur": "MI-LONGUE",
+    "Coupe": "LARGE",
+    "Manches": "MANCHES COURTES",
+    "Col": "ROND",
+    "Poches": "2 POCHES LATERALES",
+    "Saison": "ÉTÉ",
+    "Année": "2025",
+    "Imprimé": "M207A"
+  },
+  "tailles": [
+    {
+      "taille_affichee": "44",
+      "taille_avm": "XL",
+      "id_attribute": "24",
+      "id_product_attribute": 42290,
+      "sku_taille": "ROP0176F_XL",
+      "stock": 13,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "46",
+      "taille_avm": "XL",
+      "id_attribute": "24",
+      "id_product_attribute": 42290,
+      "sku_taille": "ROP0176F_XL",
+      "stock": 13,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "48",
+      "taille_avm": "1X",
+      "id_attribute": "27",
+      "id_product_attribute": 42291,
+      "sku_taille": "ROP0176F_1X",
+      "stock": 6,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "50",
+      "taille_avm": "1X",
+      "id_attribute": "27",
+      "id_product_attribute": 42291,
+      "sku_taille": "ROP0176F_1X",
+      "stock": 6,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "52",
+      "taille_avm": "2X",
+      "id_attribute": "28",
+      "id_product_attribute": 42292,
+      "sku_taille": "ROP0176F_2X",
+      "stock": 10,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "54",
+      "taille_avm": "2X",
+      "id_attribute": "28",
+      "id_product_attribute": 42292,
+      "sku_taille": "ROP0176F_2X",
+      "stock": 10,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "56",
+      "taille_avm": "3X",
+      "id_attribute": "29",
+      "id_product_attribute": 42293,
+      "sku_taille": "ROP0176F_3X",
+      "stock": 8,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "58",
+      "taille_avm": "3X",
+      "id_attribute": "29",
+      "id_product_attribute": 42293,
+      "sku_taille": "ROP0176F_3X",
+      "stock": 8,
+      "disponible": true
+    },
+    {
+      "taille_affichee": "60",
+      "taille_avm": "3X",
+      "id_attribute": "29",
+      "id_product_attribute": 42293,
+      "sku_taille": "ROP0176F_3X",
+      "stock": 8,
+      "disponible": true
+    }
+  ],
+  "stock_total": 37,
+  "stock_incertain": false,
+  "images": [
+    "https://cdn1.avmimport.com/67437-large_default/rop0176f.jpg",
+    "https://cdn2.avmimport.com/67438-large_default/rop0176f.jpg",
+    "https://cdn1.avmimport.com/67439-large_default/rop0176f.jpg",
+    "https://cdn3.avmimport.com/67440-large_default/rop0176f.jpg"
+  ],
+  "url": "https://www.avmimport.com/fr/24347-42290-rop0176f.html",
+  "scraped_at": "2026-03-24T20:02:37.886Z"
+}

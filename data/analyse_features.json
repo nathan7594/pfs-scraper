@@ -1,0 +1,89 @@
+{
+  "total_produits": 40,
+  "features": {
+    "Matière": {
+      "count": 40,
+      "pct": 100
+    },
+    "Construction": {
+      "count": 40,
+      "pct": 100
+    },
+    "Couleur": {
+      "count": 40,
+      "pct": 100
+    },
+    "Lavage": {
+      "count": 40,
+      "pct": 100
+    },
+    "Correspondance Tailles UE": {
+      "count": 40,
+      "pct": 100
+    },
+    "Saison": {
+      "count": 40,
+      "pct": 100
+    },
+    "Année": {
+      "count": 40,
+      "pct": 100
+    },
+    "Imprimé": {
+      "count": 40,
+      "pct": 100
+    },
+    "Coupe": {
+      "count": 39,
+      "pct": 98
+    },
+    "Longueur": {
+      "count": 34,
+      "pct": 85
+    },
+    "Col": {
+      "count": 33,
+      "pct": 83
+    },
+    "Manches": {
+      "count": 32,
+      "pct": 80
+    },
+    "Promo": {
+      "count": 26,
+      "pct": 65
+    },
+    "Fermeture": {
+      "count": 19,
+      "pct": 48
+    },
+    "Poches": {
+      "count": 13,
+      "pct": 33
+    },
+    "Ceinture": {
+      "count": 7,
+      "pct": 18
+    },
+    "Détail Col": {
+      "count": 6,
+      "pct": 15
+    },
+    "Ourlet": {
+      "count": 6,
+      "pct": 15
+    },
+    "Type Manches": {
+      "count": 6,
+      "pct": 15
+    },
+    "Détail Manches": {
+      "count": 3,
+      "pct": 8
+    },
+    "Détail Sans Manches": {
+      "count": 2,
+      "pct": 5
+    }
+  }
+}

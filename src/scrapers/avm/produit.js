@@ -1,7 +1,7 @@
-// scraper-avm.js
+﻿// scraper-avm.js
 const axios = require('axios');
-const { eclaterTailles } = require('./parser-tailles');
-const { decoderSKU } = require('./decoder-sku');
+const { eclaterTailles } = require('../../utils/parser-tailles');
+const { decoderSKU } = require('../../utils/decoder-sku');
 
 async function scraperProduitAVM(page, url) {
     console.log(`🔍 Scraping AVM : ${url}`);

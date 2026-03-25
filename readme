@@ -1,0 +1,539 @@
+# 🛍️ PFS Scraper — Documentation complète
+
+Projet de scraping et d'import automatique de produits mode grande taille sur Shopify.
+Deux fournisseurs : **Paris Fashion Shops (PFS)** et **AVM Import**.
+
+---
+
+## 📁 Architecture des fichiers
+
+pfs-scraper/
+├── src/                          Tout le code source
+│   ├── scrapers/                 Tout ce qui scrape des sites web
+│   │   ├── avm/                  Scraping AVM Import (actif)
+│   │   │   ├── auth.js           Connexion au site AVM via Puppeteer
+│   │   │   ├── produit.js        Scraping d'une fiche produit AVM
+│   │   │   └── catalogue.js      [A CREER] Récupération automatique des URLs
+│   │   └── pfs/                  Paris Fashion Shops (archivé, non utilisé)
+│   │       ├── auth.js           Connexion PFS
+│   │       ├── produit.js        Scraping PFS
+│   │       └── main.js           Point d'entrée PFS
+│   ├── db/
+│   │   └── index.js              Toutes les interactions base de données
+│   ├── shopify/
+│   │   └── client.js             Tous les appels API Shopify
+│   ├── jobs/                     Tâches à lancer manuellement ou automatiquement
+│   │   ├── import.js             Publie les produits de la base vers Shopify
+│   │   ├── fix-prix.js           Recalcule les prix de vente TTC
+│   │   ├── seo.js                Génère titres + descriptions SEO via Claude AI
+│   │   ├── sync-stocks.js        [A CREER] Sync stocks AVM → Shopify toutes les 2h
+│   │   └── robot.js              [A CREER] Orchestre tout automatiquement
+│   ├── utils/                    Fonctions utilitaires partagées
+│   │   ├── decoder-sku.js        Décode les préfixes SKU AVM → catégorie Shopify
+│   │   └── parser-tailles.js     Convertit les tailles AVM (XL,1X) → tailles EU (44,46)
+│   └── notifications/            Alertes et notifications
+│       └── slack.js              [A CREER] Notifications Slack
+├── setup/                        Configuration initiale (usage unique)
+│   ├── get-token.js              Génère l'URL d'autorisation Shopify OAuth
+│   └── exchange-token.js         Échange le code OAuth contre le token Shopify
+├── tests/                        Fichiers de test
+│   └── test-shopify.js           Teste la connexion Shopify avec 1 produit
+├── data/                         Données statiques
+│   └── analyse_features.json     Analyse des caractéristiques produits AVM
+├── boutique.db                   Base SQLite locale (temporaire → Supabase)
+├── main.js                       Point d'entrée principal
+├── .env                          Variables d'environnement (jamais sur Git)
+└── package.json
+
+🧠 Pourquoi cette structure ?
+Le principe de base
+Chaque dossier a une seule responsabilité. Quand tu veux modifier quelque chose, tu sais exactement où aller sans chercher.
+src/scrapers/
+Regroupe tout ce qui interagit avec des sites web externes. Séparé par source :
+
+avm/ → tout ce qui touche avmimport.com
+pfs/ → tout ce qui touche parisfashionshops.com (archivé)
+
+Règle : Si tu ajoutes un nouveau fournisseur demain, tu crées un nouveau dossier ici.
+Exemple : src/scrapers/nouveaufournisseur/
+src/db/
+Un seul fichier index.js qui centralise toutes les requêtes à la base de données. Personne d'autre ne parle directement à la base — tout passe par ce fichier.
+Pourquoi ? Si tu changes de base de données (SQLite → Supabase), tu ne modifies qu'un seul fichier.
+src/shopify/
+Un seul fichier client.js qui centralise tous les appels à l'API Shopify.
+Pourquoi ? Même logique que db/ — si Shopify change son API, tu ne modifies qu'un endroit.
+src/jobs/
+Les tâches métier qu'on lance pour faire tourner le business.
+Règle : Chaque job fait UNE chose précise. On peut les lancer indépendamment ou tous ensemble via robot.js.
+src/utils/
+Fonctions pures et réutilisables sans dépendances externes.
+Règle : Un fichier utils ne fait pas d'appels HTTP et ne touche pas la base de données. C'est uniquement de la logique pure.
+src/notifications/
+Tout ce qui envoie des alertes à l'extérieur (Slack, email...).
+setup/
+Fichiers qu'on utilise une seule fois pour configurer le projet. Une fois la config faite, on n'y touche plus.
+tests/
+Fichiers pour tester que les connexions fonctionnent.
+data/
+Données statiques du projet qui ne changent pas souvent.
+
+## 📦 Stack technique
+
+| Outil | Version | Usage |
+|-------|---------|-------|
+| Node.js | 18+ | Runtime principal |
+| Puppeteer | latest | Scraping avec navigateur headless |
+| Axios | latest | Requêtes HTTP vers l'API AVM |
+| better-sqlite3 | latest | Base de données SQLite |
+| @anthropic-ai/sdk | latest | Génération SEO via Claude |
+| Sharp | latest | Traitement des images |
+| dotenv | latest | Variables d'environnement |
+
+---
+
+## 🔐 Variables d'environnement (.env)
+
+```bash
+# Paris Fashion Shops
+PFS_EMAIL=ton@email.com
+PFS_PASSWORD=motdepasse
+
+# AVM Import
+AVM_EMAIL=ton@email.com
+AVM_PASSWORD=motdepasse
+
+# Shopify
+SHOPIFY_STORE=zu5qny-mj.myshopify.com
+SHOPIFY_TOKEN=shpat_xxxxxxxxxxxxxxxxxx
+
+# Anthropic Claude API
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxx
+```
+
+---
+
+## 📄 Description détaillée de chaque fichier
+
+---
+
+### `auth.js` — Connexion Paris Fashion Shops
+
+**Rôle :** Se connecte sur PFS via Puppeteer avec gestion de la popup cookies.
+
+**Ce qu'il fait :**
+- Lance Puppeteer en mode headless ou visible
+- Navigue vers la page de login PFS
+- Accepte la popup cookies si elle apparaît
+- Remplit email/mot de passe depuis `.env`
+- Vérifie la connexion réussie
+
+**Export :** `login()`
+
+**Utilisé par :** `main.js`
+
+---
+
+### `auth-avm.js` — Connexion AVM Import
+
+**Rôle :** Se connecte sur AVM Import via Puppeteer.
+
+**Ce qu'il fait :**
+- Lance Puppeteer (headless: true pour tourner en arrière-plan)
+- Navigue vers `avmimport.com/fr/connexion`
+- Accepte les cookies si popup
+- Remplit le formulaire avec sélecteur `#submit-login`
+- Vérifie la connexion (si URL reste sur /connexion → erreur)
+
+**Export :** `loginAVM()`
+
+**Utilisé par :** `main-avm.js`
+
+---
+
+### `scraper.js` — Scraping Paris Fashion Shops
+
+**Rôle :** Scrape les fiches produit PFS et extrait les variantes.
+
+**Ce qu'il fait :**
+- Navigue vers la fiche produit
+- Extrait les variantes "Unité" uniquement (ignore les packs)
+- Détecte le stock via classes CSS :
+  - `.no-stock` → stock = 0
+  - `.low-stock` "Reste X pièces" → stock = X
+  - Sinon → stock = 99 (disponible)
+- Récupère les images haute résolution
+- Filtre les variantes couleur
+
+**Export :** `scraperProduit(page, url)`
+
+**Utilisé par :** `main.js`
+
+---
+
+### `scraper-avm.js` — Scraping AVM Import
+
+**Rôle :** Scrape les fiches produit AVM et récupère le stock exact par taille via l'API PrestaShop.
+
+**Ce qu'il fait :**
+- Navigue vers la fiche produit
+- Extrait le JSON `data-product` depuis `#product-details`
+- Récupère le token CSRF de la page
+- Identifie les tailles disponibles via `#group_1 li`
+- Calcule les `id_product_attribute` de chaque taille (pattern séquentiel)
+- Appelle l'API PrestaShop pour chaque taille :
+  ```
+  /fr/index.php?controller=product&token=XXX&id_product=YYY&id_product_attribute=ZZZ&ajax=1&action=refresh
+  ```
+- Valide le SKU retourné (doit commencer par le SKU produit)
+- Passe les tailles à `eclaterTailles()` pour les convertir en tailles EU
+- Décode le SKU via `decoderSKU()` pour obtenir la catégorie
+
+**Export :** `scraperProduitAVM(page, url)`
+
+**Utilisé par :** `main-avm.js`
+
+**Points importants :**
+- Le token CSRF expire — à surveiller en production
+- Les `id_product_attribute` sont séquentiels (XL=N, 1X=N+1, 2X=N+2...)
+- `stock_incertain: true` si le SKU retourné ne correspond pas
+
+---
+
+### `parser-tailles.js` — Parsing et éclatement des tailles
+
+**Rôle :** Convertit les tailles AVM en tailles EU pour Shopify.
+
+**Ce qu'il fait :**
+
+`parserCorrespondanceTailles(correspondance)` :
+- Parse la chaîne "Correspondance Tailles UE" d'AVM
+- Gère 3 cas :
+  - `UNIQUE (44/60)` → génère toutes les tailles paires de 44 à 60
+  - `XL,1X,2X,3X (44/46,48/50,52/54,56/60)` → mapping par taille
+  - `XL/1X,2X/3X (44/50,52/60)` → génère les intervalles
+
+`eclaterTailles(taillesAvecStock, correspondance)` :
+- Pour chaque taille AVM → génère les tailles EU correspondantes
+- Même stock pour toutes les sous-tailles d'un groupe
+- Conserve `taille_affichee` (EU) et `taille_avm` (original)
+
+**Export :** `parserCorrespondanceTailles()`, `eclaterTailles()`
+
+**Exemples :**
+```
+XL    → [44, 46]
+1X    → [48, 50]
+2X    → [52, 54]
+3X    → [56, 58, 60]
+XL/1X → [44, 46, 48, 50]
+UNIQUE (44/60) → [44, 46, 48, 50, 52, 54, 56, 58, 60]
+```
+
+---
+
+### `decoder-sku.js` — Décodage des préfixes SKU AVM
+
+**Rôle :** Identifie la catégorie et le type Shopify d'un produit à partir de son SKU.
+
+**Table de correspondance :**
+
+| Préfixe | Catégorie | Type Shopify |
+|---------|-----------|--------------|
+| MCCOP | Combinaisons GT | Combinaison |
+| MCMAXIP | Robes longues GT | Robe longue |
+| LMAXIP | Robes longues | Robe longue |
+| MAXIP | Robes longues | Robe longue |
+| MCROP | Robes courtes GT | Robe |
+| ROPV | Robes courtes | Robe |
+| ROP | Robes courtes | Robe |
+| MCPAP | Pantalons GT | Pantalon |
+| LPAP | Pantalons | Pantalon |
+| PAPV | Pantalons | Pantalon |
+| PAP | Pantalons | Pantalon |
+| MCTUP | Tuniques GT | Tunique |
+| TUPV | Tuniques | Tunique |
+| TUP | Tuniques | Tunique |
+
+**Export :** `decoderSKU(sku)`
+
+**Utilisé par :** `scraper-avm.js`
+
+---
+
+### `seoclaude.js` — Génération SEO via Claude API
+
+**Rôle :** Génère un titre et une description SEO optimisés pour chaque produit via l'API Anthropic Claude.
+
+**Ce qu'il fait :**
+- Envoie les données du produit à Claude (claude-sonnet-4-5)
+- Génère un titre de 50-60 caractères optimisé SEO
+- Génère une description de 150-200 mots en 3 paragraphes :
+  - Paragraphe 1 : description vendeuse
+  - Paragraphe 2 : détails techniques
+  - Paragraphe 3 : guide des tailles
+- Nettoie les backticks du JSON retourné par Claude
+- Retourne le nombre de tokens utilisés
+
+**Coût approximatif :** ~0.004€ par produit
+
+**Export :** `genererTitreEtDescription(produit)`
+
+**Utilisé par :** `main-avm.js`
+
+---
+
+### `database.js` — Base de données SQLite
+
+**Rôle :** Gère toutes les interactions avec la base de données SQLite `boutique.db`.
+
+**Tables :**
+
+`products` — Informations produit
+```
+id, source, sku, url, titre, description_seo, titre_genere
+categorie, categorie_code, shopify_type
+matiere, construction, couleur, lavage, correspondance_tailles
+saison, annee, imprime, coupe, longueur, col, manches
+features_json (features rares en JSON)
+prix_ht, prix_vente_ttc
+shopify_product_id, vinted_item_id
+sync_status, stock_incertain, images_traitees
+notes, error_message, last_synced_at, created_at, updated_at
+```
+
+`variants` — Tailles et stocks
+```
+id, product_id, taille_affichee, taille_avm, sku_taille
+id_attribute, id_product_attribute
+stock, disponible, stock_incertain, last_stock
+shopify_variant_id, updated_at
+```
+
+`images` — URLs des images
+```
+id, product_id, url, position, shopify_image_id
+```
+
+`sync_logs` — Historique des synchronisations
+```
+id, source, started_at, finished_at
+produits_scrapes, produits_mis_a_jour, produits_archives
+erreurs, sync_status, error_message
+```
+
+**Fonctions exportées :**
+- `initialiserDb()` — Crée les tables + migrations automatiques
+- `sauvegarderProduit(produit)` — Insert ou update un produit complet
+- `mettreAJourSEO(sku, titre, description)` — Sauvegarde le titre et description SEO
+- `mettreAJourShopifyIds(sku, shopifyProductId, variants)` — Sauvegarde les IDs Shopify
+- `getProduitsAPublier()` — Retourne les produits prêts à être publiés
+- `calculerPrixVente(prix_ht, shopify_type)` — Calcule le prix de vente TTC
+- `logSync(source, data)` — Enregistre un log de synchronisation
+- `getStats()` — Retourne les statistiques globales
+
+**Règle de calcul des prix :**
+```
+Prix TTC = prix_ht × 4 × 1.20 (TVA)
+Arrondi vers le bas au .90 le plus proche
+Plafonds par catégorie :
+  Combinaison → 39.90€
+  Robe        → 49.90€
+  Robe longue → 49.90€
+  Pantalon    → 44.90€
+  Tunique     → 34.90€
+```
+
+---
+
+### `shopify.js` — Push produits sur Shopify
+
+**Rôle :** Crée un produit sur Shopify avec ses variantes, images et collection.
+
+**Ce qu'il fait :**
+- Traite les images avec Sharp (resize 870×1110, fond gris 240,240,240)
+- Construit les variantes Shopify depuis les données en base
+- Crée le produit via l'API Shopify REST
+- Associe le produit à la collection "Vêtements" (ID: 680526184774)
+- Retourne les IDs Shopify pour les sauvegarder en base
+
+**Export :** `pusherProduit(produit, variants, images)`
+
+**Utilisé par :** `import-shopify.js`
+
+**Configuration Shopify :**
+- Status : `active` (publié immédiatement)
+- Vendor : `AVM Import`
+- Collection : Vêtements (680526184774)
+- Tags : shopify_type, categorie_code, grande taille, saison, imprime
+
+---
+
+### `main.js` — Point d'entrée PFS
+
+**Rôle :** Script principal pour tester le scraping PFS.
+
+**Ce qu'il fait :**
+- Se connecte à PFS via `auth.js`
+- Scrape plusieurs produits via `scraper.js`
+- Sauvegarde les JSON de test
+
+---
+
+### `main-avm.js` — Point d'entrée AVM
+
+**Rôle :** Script principal pour scraper les produits AVM et les sauvegarder en base.
+
+**Ce qu'il fait :**
+- Initialise la base de données
+- Se connecte à AVM via `auth-avm.js`
+- Scrape la liste de produits définie
+- Sauvegarde chaque produit en base via `database.js`
+- Génère l'analyse des features à la fin
+- Affiche les stats de la base
+
+---
+
+### `import-shopify.js` — Import des produits sur Shopify
+
+**Rôle :** Pousse les produits de la base vers Shopify.
+
+**Ce qu'il fait :**
+- Récupère les produits sans `shopify_product_id` en base
+- Pour chaque produit : récupère variants + images
+- Appelle `pusherProduit()` pour créer sur Shopify
+- Sauvegarde les IDs Shopify retournés via `mettreAJourShopifyIds()`
+- Gère les erreurs sans interrompre le batch
+- Affiche un résumé succès/erreurs
+
+---
+
+### `fix-prix.js` — Recalcul des prix de vente
+
+**Rôle :** Corrige les shopify_type manquants et recalcule tous les prix.
+
+**Ce qu'il fait :**
+- Détecte les produits sans `shopify_type` → les décode via `decoderSKU()`
+- Recalcule tous les `prix_vente_ttc` avec la règle actuelle
+- Affiche un tableau récapitulatif SKU / Type / Prix HT / Prix TTC
+
+---
+
+### `check-prix.js` — Vérification des prix
+
+**Rôle :** Affiche tous les prix de la base pour vérification.
+
+---
+
+## 🗄️ Base de données — État actuel
+
+```
+43 produits AVM
+0 publiés Shopify (avant import)
+0 produits sans prix
+0 stocks incertains
+```
+
+---
+
+## 🔄 Flow complet
+
+```
+1. SCRAPING
+   node main-avm.js
+   → Connexion AVM (Puppeteer)
+   → Scrape chaque fiche produit
+   → API PrestaShop pour stock par taille
+   → Parse les tailles EU
+   → Décode le SKU
+   → Sauvegarde en boutique.db
+
+2. ENRICHISSEMENT SEO
+   (dans main-avm.js avec seoclaude.js)
+   → Claude API génère titre + description
+   → Sauvegarde en base
+
+3. IMPORT SHOPIFY
+   node import-shopify.js
+   → Récupère produits de la base
+   → Traite les images (Sharp)
+   → Push sur Shopify
+   → Sauvegarde IDs Shopify en base
+
+4. SYNC QUOTIDIENNE (à coder)
+   node sync.js (cron 7h)
+   → Connexion AVM
+   → API stock par id_product_attribute
+   → Met à jour Shopify + base
+   → Alerte si problème
+```
+
+---
+
+## 🔍 Analyse des features AVM
+
+Sur 40 produits analysés :
+
+| Feature | Présence | Stockage |
+|---------|----------|----------|
+| Matière | 100% | Colonne séparée |
+| Construction | 100% | Colonne séparée |
+| Couleur | 100% | Colonne séparée |
+| Lavage | 100% | Colonne séparée |
+| Correspondance Tailles UE | 100% | Colonne séparée |
+| Saison | 100% | Colonne séparée |
+| Année | 100% | Colonne séparée |
+| Imprimé | 100% | Colonne séparée |
+| Coupe | 98% | Colonne séparée |
+| Longueur | 85% | Colonne séparée |
+| Col | 83% | Colonne séparée |
+| Manches | 80% | Colonne séparée |
+| Promo | 65% | features_json |
+| Fermeture | 48% | features_json |
+| Poches | 33% | features_json |
+| Ceinture | 18% | features_json |
+| Détail Col | 15% | features_json |
+| Ourlet | 15% | features_json |
+| Type Manches | 15% | features_json |
+
+---
+
+## 📋 Préfixes SKU AVM — Nomenclature
+
+```
+36  COMBI-PANTALONS   MCCOP
+41  ROBES LONGUES     MAXIP / MAXIPV / MCMAXIP / LMAXIP
+86  PANTALONS         PAP / PAPV / MCPAP / LPAP
+101 ROBES COURTES     ROP / ROPV / MCROP
+123 TUNIQUES          TUP / TUPV / MCTUP
+```
+
+---
+
+## ⚠️ Points d'attention
+
+**Token AVM :**
+Le token CSRF expire après ~30 minutes. Si le scraping de 200+ produits plante en cours de route, c'est probablement la cause. À gérer dans la sync quotidienne.
+
+**Pattern séquentiel id_product_attribute :**
+On suppose que les tailles sont séquentielles (XL=N, 1X=N+1...). La validation SKU détecte si ce n'est pas le cas et marque `stock_incertain = true`.
+
+**Prix de vente :**
+`COALESCE` dans le UPDATE — si un prix est défini manuellement il ne sera jamais écrasé par le script.
+
+**Images :**
+Actuellement fond gris via Sharp. Le détourage IA (Remove.bg) est prévu pour une prochaine version.
+
+---
+
+## 🚀 Prochaines étapes
+
+```
+□ sync.js       → mise à jour stock quotidienne
+□ cron.js       → automatisation 7h du matin
+□ alertes       → email/Slack si plantage
+□ collections   → organiser les produits Shopify
+□ SEO           → intégrer mots-clés SEMrush dans le prompt Claude
+□ Remove.bg     → détourage images
+□ Vinted        → export des 2èmes pièces
+□ scraper PFS   → brancher sur la base de données
+```

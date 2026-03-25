@@ -1,19 +1,15 @@
-// import-shopify.js
+﻿// src/jobs/import.js
 require('dotenv').config();
-const db = require('better-sqlite3')('./boutique.db');
-const { pusherProduit } = require('./shopify');
-const { mettreAJourShopifyIds } = require('./database');
+const { pusherProduit } = require('../shopify/client');
+const {
+    getProduitsAPublier,
+    getVariantsProduit,
+    getImagesProduit,
+    mettreAJourShopifyIds
+} = require('../db/index');
 
 async function main() {
-    // On prend 20 produits pas encore publiés
-    const produits = db.prepare(`
-    SELECT * FROM products 
-    WHERE shopify_product_id IS NULL 
-    AND prix_vente_ttc IS NOT NULL
-    AND sync_status = 'ok'
-    LIMIT 20
-  `).all();
-
+    const produits = await getProduitsAPublier();
     console.log(`🚀 Import de ${produits.length} produits sur Shopify\n`);
 
     let succes = 0;
@@ -21,18 +17,16 @@ async function main() {
 
     for (const produit of produits) {
         try {
-            const variants = db.prepare('SELECT * FROM variants WHERE product_id = ? AND stock > 0').all(produit.id);
-            const images = db.prepare('SELECT * FROM images WHERE product_id = ?').all(produit.id);
+            const variants = await getVariantsProduit(produit.id);
+            const images = await getImagesProduit(produit.id);
 
             const result = await pusherProduit(produit, variants, images);
 
-            // On sauvegarde les IDs Shopify en base
-            mettreAJourShopifyIds(produit.sku, result.shopify_product_id, result.variants);
+            await mettreAJourShopifyIds(produit.sku, result.shopify_product_id, result.variants);
 
             succes++;
             console.log(`✅ ${produit.sku} → ${produit.prix_vente_ttc}€\n`);
 
-            // Délai entre chaque produit pour ne pas surcharger l'API
             await new Promise(r => setTimeout(r, 500));
 
         } catch (err) {
@@ -41,7 +35,6 @@ async function main() {
         }
     }
 
-    db.close();
     console.log(`\n═══════════════════════════════════`);
     console.log(`✅ Succès  : ${succes}`);
     console.log(`❌ Erreurs : ${erreurs}`);
