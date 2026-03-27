@@ -4,7 +4,7 @@ const clientId = process.env.SHOPIFY_CLIENT_ID;
 const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
 const store = process.env.SHOPIFY_STORE;
 // URL d'installation — ouvre cette URL dans ton navigateur
-const installUrl = `https://${store}/admin/oauth/authorize?client_id=${clientId}&scope=write_products,read_products,write_inventory,read_inventory&redirect_uri=https://example.com&state=random123`;
+const installUrl = `https://${store}/admin/oauth/authorize?client_id=${clientId}&scope=write_products,read_products,write_inventory,read_inventory,write_metaobjects,read_metaobjects&redirect_uri=https://example.com&state=random123`;
 
 console.log('👉 Ouvre cette URL dans ton navigateur :');
 console.log(installUrl);

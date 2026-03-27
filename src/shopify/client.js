@@ -1,7 +1,31 @@
-// shopify.js
+// src/shopify/client.js
 require('dotenv').config();
 const sharp = require('sharp');
 
+// ─── Collections par type de produit ──────────────────────
+// Remplis ces IDs après avoir créé les collections sur Shopify
+const COLLECTIONS = {
+    'Robe': process.env.SHOPIFY_COLLECTION_ROBES,
+    'Robe longue': process.env.SHOPIFY_COLLECTION_ROBES,
+    'Tunique': process.env.SHOPIFY_COLLECTION_TUNIQUES,
+    'Pantalon': process.env.SHOPIFY_COLLECTION_PANTALONS,
+    'Combinaison': process.env.SHOPIFY_COLLECTION_COMBINAISONS,
+};
+// ─── Normalisation des couleurs ────────────────────────────
+function normaliserCouleur(couleur) {
+    if (!couleur) return null;
+    const map = {
+        'CREME': 'BEIGE',
+        'PETROLE': 'BLEU',
+        'BORDEAUX': 'ROUGE',
+        'OR': 'JAUNE',
+        'BLEU MARINE': 'BLEU',
+        'TURQUOISE': 'BLEU',
+        'MARINE': 'BLEU',
+    };
+    return map[couleur] || couleur;
+}
+// ─── Traitement image ──────────────────────────────────────
 async function traiterImage(urlImage) {
     const res = await fetch(urlImage);
     const buffer = Buffer.from(await res.arrayBuffer());
@@ -30,16 +54,14 @@ async function traiterImage(urlImage) {
             background: { r: 240, g: 240, b: 240 }
         }
     })
-        .composite([{
-            input: webpBuffer,
-            gravity: 'center'
-        }])
+        .composite([{ input: webpBuffer, gravity: 'center' }])
         .webp({ quality: 92 })
         .toBuffer();
 
     return result;
 }
 
+// ─── Push produit sur Shopify ──────────────────────────────
 async function pusherProduit(produit, variants, images) {
     console.log(`\n🚀 Push Shopify : ${produit.sku}`);
 
@@ -74,7 +96,18 @@ async function pusherProduit(produit, variants, images) {
         taxable: true
     }));
 
-    // Étape 3 — Body Shopify
+    // Étape 3 — Tags avec couleur
+    const tags = [
+        produit.shopify_type,
+        produit.categorie_code,
+        'grande taille',
+        produit.saison,
+        produit.imprime,
+        normaliserCouleur(produit.couleur),
+        produit.longueur    // ← ajoute juste cette ligne
+    ].filter(Boolean).join(', ');
+
+    // Étape 4 — Body Shopify
     const body = {
         product: {
             title: produit.titre || produit.sku,
@@ -82,22 +115,14 @@ async function pusherProduit(produit, variants, images) {
             vendor: 'AVM Import',
             product_type: produit.shopify_type || 'Vêtement',
             status: 'active',
-            tags: [
-                produit.shopify_type,
-                produit.categorie_code,
-                'grande taille',
-                produit.saison,
-                produit.imprime
-            ].filter(Boolean).join(', '),
-            options: [
-                { name: 'Taille', values: tailles }
-            ],
+            tags: tags,
+            options: [{ name: 'Taille', values: tailles }],
             variants: shopifyVariants,
             images: imagesTraitees
         }
     };
 
-    // Étape 4 — Appel API Shopify
+    // Étape 5 — Appel API Shopify
     console.log(`  📤 Envoi vers Shopify...`);
     const res = await fetch(`https://${process.env.SHOPIFY_STORE}/admin/api/2026-01/products.json`, {
         method: 'POST',
@@ -118,25 +143,31 @@ async function pusherProduit(produit, variants, images) {
     const shopifyProductId = String(data.product.id);
     console.log(`  ✅ Produit créé — ID Shopify: ${shopifyProductId}`);
 
-    // Étape 5 — Ajout à la collection Vêtements
-    await fetch(`https://${process.env.SHOPIFY_STORE}/admin/api/2026-01/collects.json`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
-        },
-        body: JSON.stringify({
-            collect: {
-                product_id: shopifyProductId,
-                collection_id: '680526184774'
-            }
-        })
-    });
-    console.log(`  ✅ Ajouté à la collection Vêtements`);
+    // Étape 6 — Ajout à la bonne collection selon le type
+    const collectionId = COLLECTIONS[produit.shopify_type];
+
+    if (collectionId) {
+        await fetch(`https://${process.env.SHOPIFY_STORE}/admin/api/2026-01/collects.json`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+            },
+            body: JSON.stringify({
+                collect: {
+                    product_id: shopifyProductId,
+                    collection_id: collectionId
+                }
+            })
+        });
+        console.log(`  ✅ Ajouté à la collection : ${produit.shopify_type}`);
+    } else {
+        console.log(`  ⚠️ Pas de collection pour le type : ${produit.shopify_type}`);
+    }
 
     console.log(`  🔗 https://${process.env.SHOPIFY_STORE}/admin/products/${shopifyProductId}`);
 
-    // Étape 6 — On retourne les IDs
+    // Étape 7 — On retourne les IDs
     return {
         shopify_product_id: shopifyProductId,
         variants: data.product.variants.map(v => ({

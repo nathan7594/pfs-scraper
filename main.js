@@ -24,7 +24,7 @@ async function main() {
         console.log('');
 
         // Étape 3 — Scraping de chaque produit
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < urls.length; i++) {
             console.log(`═══════════════════════════════════`);
             console.log(`Produit ${i + 1}/${urls.length}`);
             console.log(`═══════════════════════════════════`);
